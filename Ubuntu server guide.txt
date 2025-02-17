@@ -1,0 +1,163 @@
+Server setup.
+
+	OS installation prep
+install an iso to USB with Rufus or alike
+plug in to device
+go to bios settings
+select the usb from devices menu to boot from and place it above/before everything
+
+	OS installation
+select install server
+select language
+update installer
+select keyboard
+select server (not minimal) and search for drivers
+continue if using ethernet
+dont enter proxy unless you know you have to
+wait few seconds for mirror passes than continue if auto-entered address passes
+no need for LVM if you have 1 disk and gonna use all of it.
+continue till account section, select; name for your admin account, server name (will be somewhat public) and a secure password.
+no need for ubuntu pro
+install openssh to use and control this device from other devices that are on the network. (it is safe if it only works local)
+dont select any packages. continue.
+click reboot, unplug usb than press enter if requested.
+
+	OS setup for convenience
+=to not ask root password from admin user sudo commands:
+$sudo visudo
+than write "YOUR_USERNAME_HERE ALL=(ALL) NOPASSWD: ALL" at the end of the file without quotes
+
+=for colorfull console and better text before $ at bash:
+add the following text to the end of the ~/.bashrc
+PS1="\[$(tput setaf 6)$(tput bold)\]\u\[$(tput setaf 2)\]@\[$(tput setaf 6)\]\H\[$(tput setaf 2)\]:\[$(tput setaf 1)\]\w\[$(tput setaf 2)\]\$\[$(tput sgr0)\] "
+delete the comment indicator '#' in the same file at the following line
+#force_color_prompt=yes
+
+=for bigger console text
+$sudo nano /etc/default/console-setup
+change the value of FONTSIZE
+for example to
+FONTSIZE="12x24"
+
+=to not sleep/close server when lid is closed
+go to this file
+$sudo nano /etc/systemd/logind.conf
+delete the comment indicator of these lines AND edit them like shown below
+HandleLidSwitch=ignore
+HandleLidSwitchExternalPower=ignore
+HandleLidSwitchDocked=ignore
+LidSwitchIgnoreInhibited=no
+
+	We are taking a little break
+first of all update the OS we have been running an out of date OS for way too long anyways
+$sudo apt update
+$sudo apt upgrade
+now install this 100% useless package
+$sudo apt install cmatrix
+now write the command below to see what it does
+$cmatrix
+now install this other 100% useless package
+$sudo apt install neofetch
+see what it does
+$neofetch
+
+	Completing setup for static http hosting
+=first of all download/send or create a basic static website
+to send a folder you can use the following command (enter this to the windows machine obviously)
+scp -r C:\[path]\[to]\[directory] [username]@[serverIP]:/home/[username]/site
+change the text between the brackets and write it without brackets
+than it will ask if a key is correct and show its sha256
+just say yes
+than enter the password of the user [username]
+the file transfer is done.
+
+=now lets host a static website with http on port 80 for a dopamine hit and to see if things work
+$sudo apt install apache2
+
+move your website to /var/www/html/ with index.html being the initial site.
+
+if it is not you can just create an index.html with only purpose of redirecting,
+example:
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirecting...</title>
+  <meta http-equiv="refresh" content="0; url=./psemo.github.io/index.html">
+</head>
+<body>
+  <p>If you are not redirected automatically, <a href="./psemo.github.io/index.html">click here</a>.</p>
+</body>
+</html>
+
+do these for permissions to sites
+$cd /var/www/html/
+$sudo find . -type d -exec chmod 755 {} \;
+$sudo find . -type f -exec chmod 644 {} \;
+
+also try these 2 just in case but these probably wont work
+$sudo chown -R tecmint:apache .
+$sudo chown -R tecmint:www-data .
+
+$sudo systemctl restart apache2
+you should not need to open port 80 to local network it should just work
+if it does not tho, maybe thats the problem
+
+	Getting extra security before public static http
+sudo apt install ufw
+sudo ufw default deny incoming
+
+sudo ufw allow from 192.168.x.xxx to any port 22
+make the ip the real computer you will control the server from
+
+sudo ufw allow http
+sudo ufw allow https
+sudo ufw enable
+
+sudo ufw status
+check if any unintended setting is there
+
+====================================
+
+router side:
+
+I am gonna pretend my desired local ip for my server is
+192.168.1.300
+and my desired port is 443
+
+1-a)	Enable DDNS update
+Enter WAN > DDNS
+after selecting the ddns provider fill-out;
+Username,
+Password,
+Host Name
+might be more or less depending on ddns provider
+
+1-b)	Enable DDNS update
+if you dont have the auto ip update you want on your router or dont wanna do it on router side for some reason,
+you need to download a package and run a command like this
+noip-duc -g all.ddnskey.com --username <DDNS Key Username> --password <DDNS Key Password>
+
+2-)	Enable port forwarding
+Enter WAN > Routing Settings > Port Forwarding
+fill-out;
+custom-name,
+protocol TCP/UDP,
+WAN connection INTERNET,
+WAN Host IP Address 0.0.0.0 ~ 255.255.255.255,
+LAN Host 192.168.1.300,
+WAN Port 443 ~ 443,
+LAN Host Port 443 ~ 443
+and the same for the port 80 ~ 80
+
+3-)	Enable static local ip
+Local network > LAN > DHCP Binding
+enter mac address of the server and 192.168.1.300
+Also you might wanna bind the "actual computer that you will control your server from with ssh" too
+
+4-)	Disable stupid vulnerable devices proposing danger
+WAN > Routing settings > UPnP
+disable upnp
+
+========================================
